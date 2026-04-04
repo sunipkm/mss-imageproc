@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mss-imageproc"
+version = "0.0.1"
+description = "Image processing utilities for MSS Designer Models"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Sunip K. Mukherjee", email = "sunipkmukherjee@gmail.com" }]
+keywords = ["image-processing", "remote-sensing", "mosaic"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "astropy>=7.1",
+    "dacite>=1.8.1",
+    "natsort>=8.4.0",
+    "numpy>=1.26",
+    "scikit-image>=0.22",
+    "serde-dataclass>=0.0.4",
+    "tomlkit>=0.12.5",
+    "xarray>=2024.1.0",
+    "netcdf4>=1.6.3",
+    "astropy-xarray==0.1.0",
+]
+license = { text = "MIT" }
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
