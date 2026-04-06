@@ -1,6 +1,11 @@
-from importlib.metadata import version
+import importlib.metadata as metadata
 
-__version__ = version(__package__ or 'mss_imageproc')
+try:
+    __version__ = metadata.version(__package__ or 'mss_imageproc')
+except metadata.PackageNotFoundError:
+    # Fallback version if package metadata is not found. 
+    # This should be updated if the version is changed in pyproject.toml.
+    __version__ = '0.0.2'
 
 from .straighten_image import (
     MosaicImageMapper,
