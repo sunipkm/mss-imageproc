@@ -24,7 +24,7 @@ straightener = MosaicImageStraightener.from_instrument_config('path/to/instrumen
 image_array = ...  # Load your image as a 2D NumPy array
 mapped_image = straightener.load_image(image_array)
 # Straighten the image by removing slit curvature
-straightened_images = straightener.straighten_image(mapped_image)
+straightened_images = mapped_image.straighten_image()
 # The result is a dictionary of straightened images, one for each window. You can access them like this:
 for window_name, straightened_image in straightened_images.items():
     print(f"Straightened image for window {window_name}:")

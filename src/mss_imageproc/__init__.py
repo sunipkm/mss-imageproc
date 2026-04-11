@@ -10,16 +10,18 @@ except metadata.PackageNotFoundError:
 from .straighten_image import (
     MosaicImageMapper,
     MosaicImageStraightener,
+    MosaicMappedImage,
     ScaleType,
     TranslationType,
     PixelSizeType,
-    TransformMatrix
+    TransformMatrix,
 )
 from . import utils
 
 __all__ = [
     "MosaicImageMapper",
     "MosaicImageStraightener",
+    "MosaicMappedImage",
     "ScaleType",
     "TranslationType",
     "PixelSizeType",

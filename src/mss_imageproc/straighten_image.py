@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Dict, List, Literal, Sequence, Tuple, Union, overload
+from typing import Dict, List, Literal, Optional, Sequence, Tuple, Union, overload
 from xarray import Dataset, DataArray, concat, MergeError, load_dataset
 from astropy.units import Quantity
 import astropy.units as u
@@ -290,7 +290,8 @@ class MosaicImageStraightener:
                     if not dsdir.is_dir():
                         # Load the mapper
                         if dsdir.suffix == '.json' and '_mapper' in dsdir.stem:
-                            mapper = MosaicImageMapper.from_json(dsdir.read_text())
+                            mapper = MosaicImageMapper.from_json(
+                                dsdir.read_text())
                     else:
                         # Load the curve maps
                         win_name = dsdir.name
@@ -320,7 +321,7 @@ class MosaicImageStraightener:
         order: int = 1,
         cval: float = nan,
         mode: PaddingMode = 'constant',
-    ) -> DataArray:
+    ) -> MosaicMappedImage:
         """Load an image onto the mosaic grid using the mapper, preparing it for straightening.
 
         Args:
@@ -330,17 +331,40 @@ class MosaicImageStraightener:
             mode (PaddingMode, optional): The padding mode to use. Defaults to 'constant'.
 
         Returns:
-            DataArray: The image mapped onto the mosaic grid.
+            MosaicMappedImage: The image mapped onto the mosaic grid.
         """
-        da, _ = self._mapper.map_to_mosaic(
+        da, px = self._mapper.map_to_mosaic(
             image, order, cval, mode)
-        return da
+        mapped = MosaicMappedImage(
+            image=da,
+            pixel_size=px
+        )
+        mapped._imaps = self._imaps
+        mapped._windows = self._windows
+        return mapped
+
+
+@dataclass
+class MosaicMappedImage:
+    """An image mapped onto the mosaic grid, ready for straightening using associated curve maps."""
+    image: DataArray
+    pixel_size: PixelSizeType
+    _imaps: Dict[str, List[Dataset]] = field(init=False, repr=False)
+    _windows: List[str] = field(init=False, repr=False)
+
+    @property
+    def windows(self) -> List[str]:
+        """Return the list of available window names for straightening.
+
+        Returns:
+            List[str]: The list of available window names for straightening.
+        """
+        return self._windows
 
     @overload
     def straighten_image(
         self,
-        image: DataArray,
-        window: str,
+        window: Optional[str],
         *,
         inplace: bool
     ) -> DataArray: ...
@@ -348,7 +372,6 @@ class MosaicImageStraightener:
     @overload
     def straighten_image(
         self,
-        image: DataArray,
         window: List[str],
         *,
         inplace: bool
@@ -356,16 +379,14 @@ class MosaicImageStraightener:
 
     def straighten_image(
         self,
-        image: DataArray,
-        window: str | List[str],
+        window: Optional[str | List[str]] = None,
         *,
         inplace: bool = True
     ) -> DataArray | Dict[str, DataArray]:
         """Straighten the given image using the curve maps associated with the specified window name(s).
 
         Args:
-            image (DataArray): The input image to be straightened, already mapped onto the mosaic grid.
-            window (str | Sequence[str]): The name(s) of the window(s) to use for straightening.
+            window (Optional[str | Sequence[str]]): The name(s) of the window(s) to use for straightening. If None, all available windows will be used. If a string is provided, the corresponding window will be used. If a list of strings is provided, each specified window will be used and the results will be returned in a dictionary keyed by window name. Defaults to None.
             inplace (bool, optional): If True, the input image will be modified in place. Defaults to True.
 
         Raises:
@@ -374,8 +395,11 @@ class MosaicImageStraightener:
         Returns:
             DataArray | Dict[str, DataArray]: _description_
         """
+        image = self.image
         if self._imaps is None:
             raise ValueError('Must setup first')
+        if window is None:
+            window = self.windows
         if isinstance(window, str):
             ret: List = []
             for ds in self._imaps.get(window, []):
@@ -438,7 +462,7 @@ class MosaicImageStraightener:
             if len(window) == 0:
                 window = self.windows
             return {
-                name: self.straighten_image(image, name, inplace=inplace)
+                name: self.straighten_image(name, inplace=inplace)
                 for name in window
             }
         else:
