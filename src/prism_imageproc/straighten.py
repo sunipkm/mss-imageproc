@@ -14,9 +14,10 @@ from numpy import nan
 from numpy.typing import NDArray
 import astropy_xarray as _
 
-from .internals import MosaicImageMapper, PaddingMode, PixelSizeType
+from .internals import MosaicImageMapper, PaddingMode, PixelSizeType, TransformMatrix
 
 # %% Definitions
+
 
 class ImageStraightener:
     """Straighten images mapped onto the mosaic grid using curve maps associated with window names.
@@ -60,9 +61,18 @@ class ImageStraightener:
                 for dsdir in tmpdir.iterdir():
                     if not dsdir.is_dir():
                         # Load the mapper
-                        if dsdir.suffix == '.json' and '_mapper' in dsdir.stem:
-                            mapper = MosaicImageMapper.from_json(
-                                dsdir.read_text())
+                        if dsdir.suffix == '.nc' and '_mapper' in dsdir.stem:
+                            ds = load_dataset(dsdir)
+                            mapper = MosaicImageMapper(
+                                source_x=ds['source_x'].values,
+                                source_y=ds['source_y'].values,
+                                target_x=ds['target_x'].values,
+                                target_y=ds['target_y'].values,
+                                pixel_size=(ds.attrs['pixel_size_x'], ds.attrs['pixel_size_y']),
+                                bounds_x=(ds.attrs['bounds_x_0'], ds.attrs['bounds_x_1']),
+                                bounds_y=(ds.attrs['bounds_y_0'], ds.attrs['bounds_y_1']),
+                                transform=TransformMatrix.from_matrix(ds['transform_matrix'].values),
+                            )
                     else:
                         # Load the curve maps
                         win_name = dsdir.name
@@ -210,10 +220,10 @@ class MappedImage:
                     data = data / res.data
                 data = map_coordinates(
                     data.values[:, :], xform, cval=nan, order=1, prefilter=False)
-                out = DataArray(data*10, coords={
+                out = DataArray(data*10, dims=('y', 'wavelength'), coords={
                     'y': (
                         ('y',),
-                        ds['wly'].data,  # type: ignore
+                        ds['wly'].data,
                         {
                             'units': 'mm',
                             'description': 'Height in the mosaic coordinate, increasing from the bottom.'
@@ -221,10 +231,18 @@ class MappedImage:
                     ),
                     'wavelength': (
                         'wavelength',
-                        ds['wavelength'].data / 10.0,  # type: ignore
+                        ds['wavelength'].data / 10.0,
                         {
                             'units': 'nm',
                             'description': 'Wavelength in nanometers',
+                        }
+                    ),
+                    'y_slit': (
+                        ('y',),
+                        ds['y_slit'].data,
+                        {
+                            'units': 'mm',
+                            'description': 'Slit Y coordinate corresponding to mosaic Y',
                         }
                     ),
                 })

@@ -7,7 +7,7 @@ except metadata.PackageNotFoundError:
     # This should be updated if the version is changed in pyproject.toml.
     __version__ = '0.0.2'
 
-from .straighten_image import (
+from .straighten import (
     ImageStraightener,
     MappedImage,
 )
@@ -17,6 +17,7 @@ from .internals import PaddingMode
 __all__ = [
     "ImageStraightener",
     "MappedImage",
+    "PaddingMode",
     "internals",
     "utils",
     "__version__",
